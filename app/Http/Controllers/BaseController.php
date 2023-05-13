@@ -21,10 +21,10 @@ class BaseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index (Request $request)
-    {
-        return success($this->model::with($request->relations)->get());
-    }
+    // public function index (Request $request)
+    // {
+    //     return response()->json(['success'=> true, 'response' => $this->model::with($request->relations)->get()]);
+    // }
 
     /**
      * Show the form for creating a new resource.

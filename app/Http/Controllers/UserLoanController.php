@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoanApplicationRequest;
+use App\Http\Requests\LoanRepayment as RequestsLoanRepayment;
 use App\Models\LoanRepayment;
 use App\Models\LoanType;
 use App\Models\User;
@@ -44,15 +45,15 @@ class UserLoanController extends BaseController
      * @param LoanApplicationRequest $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function applyForLoan (LoanApplicationRequest $request, $loanTypeId)
+    public function applyForLoan ($loanTypeId)
     {
         $loanType = LoanType::find($loanTypeId);
-
-        if ( !$loanType || !Auth::id() ) {
-            return redirect('/userHomePage')->with('failure', 'Sorry you cant apply this loan');
+        $userId = auth()->id();
+        if ( empty($loanType) || empty($userId)) {
+            return failure("No Data Found");
         }
 
-        return $this->service->createLoanApplicationLine($loanType, Auth::id());
+        return $this->service->createLoanApplicationLine($loanType, $userId);
 
     }
 
@@ -67,16 +68,16 @@ class UserLoanController extends BaseController
         $userLoan = $this->model::find($loanId);
 
         if ( $userLoan && $userLoan->loan_status_id != APPLIED_LOAN_STATUS_ID ) {
-            return redirect('/adminHomePage')->with('failure', 'No such loan found and only applied loan can be rejected');
+            return failure('No such loan found and only applied loan can be rejected');
         }
 
         if ( ( is_null($userLoan->sanctioned_at) ) ) {
             $this->service->approveLoan($userLoan);
 
-            return redirect('/adminHomePage')->with('success', $userLoan->user->email . ' loan is approved!');
+            return success($userLoan->user->email . ' loan is approved!');
         }
 
-        return redirect('/adminHomePage')->with('failure', 'Loan already approved/rejected');
+        return failure('Loan already approved/rejected');
     }
 
     /**
@@ -91,40 +92,16 @@ class UserLoanController extends BaseController
         $userLoan = $this->model::find($loanId);
 
         if ( !$userLoan ) {
-            return redirect('/adminHomePage')->with('failure', 'No such loan');
+            return failure ('No such loan');
         }
 
         if ( $userLoan->loan_status_id === APPLIED_LOAN_STATUS_ID ) {
             $this->service->changeLoanStatus($userLoan, REJECT_LOAN_STATUS_ID);
 
-            return redirect('/adminHomePage')->with('success', 'Rejected loan for ' . $userLoan->user->email);
+            return success('Rejected loan for ' . $userLoan->user->email);
         }
 
-        return redirect('/adminHomePage')->with('failure', 'Only applied loan can be rejected');
-    }
-
-    /**
-     * Admin makes loan as defaulted
-     * Only open loan can be defaulted
-     *
-     * @param $loanId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function defaultedLoan ($loanId)
-    {
-        $userLoan = $this->model::find($loanId);
-
-        if ( !$userLoan ) {
-            return redirect('/adminHomePage')->with('failure', 'No such loan');
-        }
-
-        if ( $userLoan->loan_status_id === OPEN_LOAN_STATUS_ID ) {
-            $this->service->changeLoanStatus($userLoan, DEFAULT_LOAN_STATUS_ID);
-
-            return redirect('/adminHomePage')->with('success', 'Defaulted loan for ' . $userLoan->user->email);
-        }
-
-        return redirect('/adminHomePage')->with('failure', 'Only open loan status can be defaulted');
+        return failure('Only applied loan can be rejected');
     }
 
     /**
@@ -157,44 +134,25 @@ class UserLoanController extends BaseController
      * @param $loanRepaymentId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function premiumPayment (Request $request, $loanRepaymentId)
+    public function premiumPayment (RequestsLoanRepayment $request)
     {
-        $payment = LoanRepayment::find($loanRepaymentId);
 
-        if ( !$payment ) {
-            return redirect($request->url)->with('failure', 'Loan Payment not found');
+        $loan = UserLoan::find($request->loan_id);
+
+        if ( !$loan ) {
+            failure('Loan Payment not found');
         }
 
-        if ( $payment->user_id != Auth::id() ) { //can be removed
-            return redirect($request->url)->with('failure', 'Unauthorised');
+        if ( $loan->user_id != auth()->id() ) { //can be removed
+            return failure('Unauthorised');
         }
 
-        $this->service->captureLoanPayment($payment);
-
-        return redirect($request->url)->with('success', 'Payment completed');
-    }
-
-    /**
-     * Admin verify payment once it is marked as paid
-     *
-     * @param $loanRepaymentId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function verifyPayment (Request $request, $loanRepaymentId)
-    {
-        $payment = LoanRepayment::find($loanRepaymentId);
-
-        if ( !$payment ) {
-            return redirect($request->url)->with('failure', 'Loan Payment not found');
+        if($loan->loan_status_id != OPEN_LOAN_STATUS_ID) {
+            return failure('Loan is already paid or yet to be approved');
         }
 
-        if ( $payment->verified_at ) {
-            return redirect($request->url)->with('failure', 'Loan payment is already verified');
-        }
+        return $this->service->captureLoanPayment($loan, $request);
 
-        $this->service->paymentVerified($payment);
-
-        return redirect($request->url)->with('success', 'Payment verified');
     }
 
     /**
@@ -214,44 +172,23 @@ class UserLoanController extends BaseController
      */
     public function myLoans ()
     {
-        $data = UserLoan::with(['loan_type', 'loan_status', 'loan_repayments'])->where('user_id', Auth::id())->get();
+        $data = UserLoan::with(['loan_type', 'loan_status', 'loan_repayments','payment_history'])->where('user_id', auth()->id())->get();
 
-        return view('user.myloan')->with('data', $data);
+        return success($data);
     }
 
-    /**
-     * This is for Admin to check all due payment.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function allPaymentPending ()
-    {
-        $dues = UserLoan::with(['loan_type', 'loan_status', 'loan_repayments', 'user'])
-            ->whereHas('loan_repayments', function ($q) {
-                $q->where('due_date', '<=', DateUtil::getCurrentDate());
-                $q->whereNull('paid_at');
-            })->get();
-
-        return view('admin.due')->with('data', $dues);
-    }
 
     public function loanDetail ($loanId)
     {
+
         $dues = UserLoan::with('loan_type', 'loan_status', 'loan_repayments.payment_type', 'user')
             ->find($loanId);
 
-        return view('user.loanDetail')->with('data', $dues);
-    }
+        if(auth()->id() == $dues['user_id']){
+           return success($dues);
+        }
 
-    public function allPayment ()
-    {
-        $dues = LoanRepayment::with('user', 'loan.loan_type', 'payment_type')
-            ->whereNull('verified_at')
-            ->where('due_date', '<=', DateUtil::getCurrentDate())
-            ->whereNull('paid_at')
-            ->orderBy('id', 'desc')
-            ->get();
+        return failure('Unauthorized to See Loan Details');
 
-        return view('admin.allPayment')->with('data', $dues);
     }
 }

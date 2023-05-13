@@ -20,6 +20,14 @@ class LoanTypeController extends BaseController
         $this->model = LoanType::class;
     }
 
+
+
+    public function index (Request $request)
+    {
+        return response()->json(['success'=> true, 'response' => $this->model::get()]);
+    }
+
+
     /**
      * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View
      */

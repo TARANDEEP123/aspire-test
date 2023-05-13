@@ -25,6 +25,7 @@ class UserLoan extends Model
      * Related to LoanType
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
+    protected $guarded = [];
     public function loan_type ()
     {
         return $this->belongsTo(LoanType::class);
@@ -46,6 +47,15 @@ class UserLoan extends Model
     public function loan_repayments ()
     {
         return $this->hasMany(LoanRepayment::class, 'loan_id')->where('due_date', '<=', DateUtil::getCurrentDate());
+    }
+
+    /**
+     * Related to Loan repayments
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function payment_history()
+    {
+        return $this->hasMany(PaymentHistory::class, 'loan_id');
     }
 
     /**

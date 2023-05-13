@@ -20,15 +20,21 @@ class UserService
     /**
      * Make user's login attempt
      * @param $credentials
-     * @return bool
+     * @return array
      */
-    public function doLogin ($credentials): bool
+    public function doLogin ($credentials): array
     {
-        if ( Auth::attempt($credentials) ) {
-            return true;
+        $token = Auth::attempt($credentials);
+        if (!empty($token)) {
+            $user = Auth::user();
+
+            return [
+                'user' => $user,
+                'token' => $token
+            ];
         }
 
-        return false;
+        return [];
     }
 
     /**
@@ -44,6 +50,7 @@ class UserService
         $user->email = $request->email;
         $user->password = Hash::make($request->password);
         $user->address = $request->address;
+        $user->user_type_id = 2;
         $user->save();
 
         return $user;

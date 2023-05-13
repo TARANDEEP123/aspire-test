@@ -31,7 +31,6 @@ class UserLoanObserver
             $userLoanService = new UserLoanService();
 
             $userLoanService->createEMILine($model);
-            $userLoanService->createArrangementFeeLine($model);
         }
     }
 

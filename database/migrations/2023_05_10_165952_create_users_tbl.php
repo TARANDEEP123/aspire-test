@@ -21,6 +21,7 @@ class CreateUsersTbl extends Migration
 
             $table->string('name');
             $table->string('email')->unique();
+            $table->unsignedInteger('user_type_id');
             $table->string('password')->comment('Minimum of 4 and maximum of 8 characters');
 
             $table->timestamp('email_verified_at')->nullable()->comment('When user email was verified');

@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Models\LoanRepayment;
+use App\Models\PaymentHistory;
 use App\Models\UserLoan;
 use App\Utility\DateUtil;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Calculation\Financial;
 
 /**
@@ -38,13 +40,14 @@ class UserLoanService
      */
     public function createLoanApplicationLine ($loanType, $userId)
     {
+
         $userLoan = UserLoan::where('loan_type_id', $loanType->id)
             ->where('user_id', $userId)
             ->whereNull('sanctioned_at')
             ->first();
 
         if ( $userLoan ) {
-            return redirect('/userHomePage')->with('success', 'There is already a open application for that');;
+            return success(['loanId' => $userLoan['id']]);
         }
 
         $userLoan = new UserLoan();
@@ -54,7 +57,7 @@ class UserLoanService
         $userLoan->loan_type_id = $loanType->id;
         $userLoan->save();
 
-        return redirect('/userHomePage')->with('success', 'Application submitted');
+        return success(['loanId' => $userLoan['id']]);
     }
 
     /**
@@ -81,9 +84,11 @@ class UserLoanService
             DB::beginTransaction();
             $dueDate = DateUtil::getCurrentDate();
             $repaymentArray = [];
+            $amount = $this->calculateEMI($userLoan->loan_type->interest_rate, $userLoan->loan_type->duration, $userLoan->amount);
             for ( $i = 0; $i < $userLoan->loan_type->duration; $i++ ) {
                 $repaymentArray[] = [
-                    'amount'            => $this->calculateEMI($userLoan->loan_type->interest_rate, $userLoan->loan_type->duration, $userLoan->amount),
+                    'amount'            => round($amount/7,2) ,
+                    'due_amount'        => round($amount/7,2),
                     'repayment_head_id' => EMI_HEAD_ID,
                     'due_date'          => $dueDate,
                     'user_id'           => $userLoan->user_id,
@@ -93,6 +98,7 @@ class UserLoanService
                 $dueDate = \date('Y-m-d', strtotime('+7 days', strtotime($dueDate)) + ( 7 * 12 * 60 ));
             }
             LoanRepayment::insert($repaymentArray);
+            UserLoan::find($userLoan->id)->update(['total_due_amount'=> round($amount,2)]);
             DB::commit();
         }catch(\Exception $e) {
             DB::rollBack();
@@ -152,13 +158,72 @@ class UserLoanService
      * @param $payment
      * @return mixed
      */
-    public function captureLoanPayment ($payment)
+    public function captureLoanPayment ($loanDetails, $request)
     {
-        $payment->paid_at = DateUtil::getCurrentTime();
-        $payment->payment_type_id = CASH_PAYMENT_TYPE_ID;
-        $payment->save();
+        try {
+            DB::beginTransaction();
 
-        return $payment;
+            $request->amount = round($request->amount,2);
+            if($loanDetails['total_due_amount'] <1) {
+                return failure('Loan is paid');
+            }
+
+            if($request->amount > $loanDetails['total_due_amount']) {
+                return failure('Transaction Amount is more than remaing loan amount');
+            }
+
+
+            $this->capturePaymentData($request, auth()->id());
+            $loanRepaymentData = LoanRepayment::where(['loan_id' => $request->loan_id, 'user_id' => auth()->id()])
+                ->whereNull('paid_at')->orderBy('due_date', 'asc')->get();
+
+            if (empty($loanRepaymentData)) {
+                return failure('No Loan Pending');
+            }
+
+            $settleAmt = $request->amount;
+            $update = [];
+            foreach ($loanRepaymentData as $repay) {
+                if($settleAmt == 0) {
+                    break;
+                }
+                if ($settleAmt >= $repay['due_amount']) {
+                    $settleAmt -= $repay['due_amount'];
+                    $update = [
+                        'paid_at' => DateUtil::getCurrentTime(),
+                        'payment_type_id' => CASH_PAYMENT_TYPE_ID,
+                        'due_amount'      => 0
+                    ];
+                } else {
+                    $update = [
+                        'due_amount' => $repay['due_amount']-$settleAmt
+                    ];
+                    $settleAmt = 0;
+
+                }
+                LoanRepayment::find($repay['id'])->update($update);
+            }
+            $loanDetails->update(['total_due_amount' => $loanDetails->total_due_amount - $request->amount]);
+
+
+            DB::commit();
+            return success();
+
+
+        }catch(\Exception $e) {
+            DB::rollBack();
+
+        }
+    }
+
+    private function capturePaymentData($request, $userId) {
+        return PaymentHistory::insert([
+            'user_id' => $userId,
+            'loan_id' => $request->loan_id,
+            'amount'  => $request->amount,
+            'payment_mode' => 'CASH'
+        ]);
+
     }
 
     /**
@@ -188,7 +253,8 @@ class UserLoanService
      */
     public static function calculateEMI ($interestRate, $emiTenure, $principal)
     {
-        return round(abs(Financial::PMT($interestRate / 700, $emiTenure, $principal)));
+        $interest = ($principal*$interestRate*$emiTenure)/(100*52);
+        return round($principal + $interest, 2);
     }
 
     /**
@@ -200,7 +266,7 @@ class UserLoanService
         $currentDate = DateUtil::getCurrentDate();
         $weekLater = \date('Y-m-d', strtotime('+7 days'));
 
-        return LoanRepayment::where('user_id', Auth::id())
+        return LoanRepayment::where('user_id', auth()->id())
             ->whereNull('paid_at')
             ->whereBetween('due_date', [$currentDate, $weekLater])
             ->distinct('loan_id')

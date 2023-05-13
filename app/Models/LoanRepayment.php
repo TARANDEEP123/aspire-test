@@ -20,6 +20,7 @@ class LoanRepayment extends Model
      * @var string
      */
     protected $table = 'utl_loan_repayments';
+    protected $fillable = ['paid_at','payment_type_id','user_id','loan_id','amount','due_amount'];
 
     /**
      * Loan mapped to the re-payments

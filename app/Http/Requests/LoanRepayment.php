@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Http\Requests;
+
+/**
+ * Class LoanRepayment
+ * @package App\Http\Requests
+ */
+class LoanRepayment extends BaseRequest
+{
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array
+     */
+    public function rules()
+    {
+        return [
+           "loan_id"      => "required",
+           "amount"       => "required|min:1"
+        ];
+    }
+}
