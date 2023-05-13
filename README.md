@@ -10,7 +10,7 @@ There are two high-level modules one is User Module (Loan consumer) and Admin Mo
 
 ## User Module
 
-User module consists of 12 APIs as follows:
+User module consists of APIs as follows:
 
 - Login: This API let user login to aspire app, through by email and password.
 - Show Loan Types: This API is for displaying all the loan types provided by aspire.
