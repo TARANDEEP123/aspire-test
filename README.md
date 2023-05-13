@@ -66,6 +66,11 @@ Fourth, now we are ready to run the application on the browser (Believing the se
 - For user-login go to http://127.0.0.1:8000/ (username: taran@gmail.com, password: password )
 - For admin-login go to https://127.0.0.1:8000/admin (username: admin@aspire.com,password: password )
 
+For Test 
+ - Change APP_ENV=testing 
+ - php artisan config:clear
+ - php artisan config:cache
+ - php artisan test 
 ## License
 
 Aspire is built on the Laravel framework, which is open-sourced software licensed under
