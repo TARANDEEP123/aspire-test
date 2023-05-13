@@ -11,20 +11,11 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes
+| API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
 |
 */
-
-
-
-// Route::post('adminLogin', [UserController::class, 'adminLogin']); //done
-
-
 //Public User API
 Route::post('login', [UserController::class, 'userLogin'])->name('login'); //done
 Route::middleware(['auth:api'])->group(function () {
@@ -37,15 +28,13 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/loanHistory', [UserLoanController::class, 'myLoans']); //done
         Route::get('/loanDetail/{id}', [UserLoanController::class, 'loanDetail']); //done
     });
-
 });
 
 
 //Admin API
 Route::group(['middleware' => ['admin']], function () {
     Route::post('/createUser', [UserController::class, 'createUser']);//done
-    Route::get('/approveLoan/{loan_id}', [UserLoanController::class, 'approveLoan']);//done
-    Route::get('/rejectLoan/{id}', [UserLoanController::class, 'rejectLoan']);//done
+    Route::put('/changeLoanStatus/{loan_id}', [UserLoanController::class, 'changeLoanStatus']);//done
 });
 
 

@@ -27,10 +27,11 @@ class UserMiddleware
     public function handle (Request $request, Closure $next)
     {
         $token = $request->bearerToken();
-        if(empty($token)) {
-            return new Exception('Unauthorized');
-        }
         try {
+            if (empty($token)) {
+                return new Exception('Unauthorized');
+            }
+
             $user = JWTAuth::parseToken()->authenticate();
             if (empty($user)) {
                 return response()->json(['user_not_found'], 404);

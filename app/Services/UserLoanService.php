@@ -164,14 +164,13 @@ class UserLoanService
             DB::beginTransaction();
 
             $request->amount = round($request->amount,2);
-            if($loanDetails['total_due_amount'] <1) {
+            if($loanDetails['total_due_amount'] < 1) {
                 return failure('Loan is paid');
             }
 
             if($request->amount > $loanDetails['total_due_amount']) {
                 return failure('Transaction Amount is more than remaing loan amount');
             }
-
 
             $this->capturePaymentData($request, auth()->id());
             $loanRepaymentData = LoanRepayment::where(['loan_id' => $request->loan_id, 'user_id' => auth()->id()])
@@ -212,6 +211,7 @@ class UserLoanService
 
         }catch(\Exception $e) {
             DB::rollBack();
+            return failure($e->getMessage());
 
         }
     }

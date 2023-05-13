@@ -13,15 +13,6 @@ class UserTest extends TestCase
      */
     public function test_example(): void
     {
-        // $userData = [
-        //     'name' => 'Test',
-        //     'email' => 'test1user@gmail.com',
-        //     'password' => '123456',
-        //     'address'  => 'Address'
-        // ];
-        // $response = $this->post('/signUp', $userData);
-
-        // if ($response->assertStatus(200)) {
             $userData = [
             'email' => 'taran@gmail.com',
             'password' => 'password'
@@ -38,7 +29,7 @@ class UserTest extends TestCase
                             $adminLogin = $this->post('/api/login',['email' => 'admin@aspire.com','password' => 'password']);
                             if($adminLogin->assertStatus(200)) {
                                 $adminToken = 'Bearer ' . $adminLogin['response']['token'];
-                                $rejectLoan = $this->get('/api/rejectLoan/'.$loanId, ['Authorization'=>$adminToken]);
+                                $rejectLoan = $this->put('/api/changeLoanStatus/'.$loanId,["is_approved" => 0], ['Authorization'=>$adminToken]);
                                 $rejectLoan->assertStatus(200);
 
                             }
@@ -48,4 +39,3 @@ class UserTest extends TestCase
             }
         }
     }
-//}

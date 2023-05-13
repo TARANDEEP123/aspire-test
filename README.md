@@ -12,52 +12,44 @@ There are two high-level modules one is User Module (Loan consumer) and Admin Mo
 
 User module consists of 12 APIs as follows:
 
-- Sign Up: This API enables the user to sign up to aspire app with email, password, name, and address.
 - Login: This API let user login to aspire app, through by email and password.
 - Show Loan Types: This API is for displaying all the loan types provided by aspire.
-- Apply Loan: This API enables the user to Apply for a loan, with two approach one that the user is logged in, and the
-  second is user sign-up and apply.
-- Premium Payment: With help of this API user can pay his premium of a loan.
+- Apply Loan: This API enables the user to Apply for a loan
+- Premium Payment: With help of this API user can pay his premium of a loan and he can also pay extra amount and close the loan early.
 - Upcoming Premium: This API gives details of all upcoming premiums' payments. Past to one week in the future.
 - Loan History: The user can fetch all loan history of him with aspire through this API.
 - Loan Detail: This API gives users full loan detail.
-- Repayment History: This API enables the user to track his premium payment history easily.
-- Repayment Detail: Gives details about specific premium payments.
-- Early Loan Closure: If the user wants to close his loan before tenure, this API will calculate all the costs and then
-  close it. Even waive off the extra interest that's pending.
 
 ## Admin Module
 
 Admin module consists of 9 APIs in which 3 are full resource API as follows:
 
-- Create User: Admin can create a user with email, password, name, and address. For Offline Loan Application.
 - Approve Loan: This API enables Admin to approve the loan application of the user. The applied status loan only can be
   approved. Once the loan is approved then all EMI will get populated with due_date.
 - Reject Loan: This API will reject the loan. The only applied status loan can be approved.
-- Default Loan: Make loan user as a defaulter and can be done by the Admin only.
-- Verify Payment: With this API admin will verify whether payment came or not against a premium.
-- Payment Due: This API gives all the payments due against all the loans to the Admin user.
 
-- Lookup Types: A full resource API that lets Admin post, get, put, delete records from this model. Lookup type is the
-  high-level categorization of generic terms.
-- Lookup Values: A full resource API that lets Admin post, get, put, delete records from this model. Lookup values are a
-  sub-categorization of lookup types.
-- Loan Type: A resource API that lets Admin set all the loan type schemes.
 
+Future Scope
+    - We can implement queues for doing payments
+    - We can put retry mechanism if we receive the payment but unable to update the emis through cron jobs which run every 10 mins
+    - We can apply fees like disbursment processing and conv. on the loan. 
 ## Postman
 
 You can download the postman collection for all the above APIs and start using it by setting up environment variables.
-Download it from (https://www.getpostman.com/collections/56f9860db5d0d8d7489f)
+Download it from (https://api.postman.com/collections/6877659-7807319f-ebe8-4e23-911b-3c6fb51ae3ea?access_key=PMAT-01H09YYVPA0G9XC97HVG9THQNT)
 
 ## Procedure to run the Application
 
 First, we have to set an environment with the following commands:
 
-- `git clone https://github.com/TARANDEEP123/project-aspire.git`
-- `cd project-aspire`
+- `git clone https://github.com/TARANDEEP123/aspire-test`
+- `cd aspire-test`
 - `composer update` (Assuming composer is already installed)
 - `npm i` (Assuming npm is there in the system)
 - `npm run dev` (To create an asset of js and CSS files)
+-  cp .env.example .env
+-  php artisan key:generate
+-  php artisan jwt:secret
 
 Second, we have to set database and have to seed it
 

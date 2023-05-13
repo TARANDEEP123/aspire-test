@@ -12,6 +12,7 @@ use App\Services\UserLoanService;
 use App\Utility\DateUtil;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 /**
@@ -61,48 +62,38 @@ class UserLoanController extends BaseController
      * Admin approves loan
      *
      * @param $loanId
+     * @params $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function approveLoan ($loanId)
+    public function changeLoanStatus (Request $request, $loanId)
     {
+        $validate = Validator::make($request->all(),[
+            'is_approved' => 'required'
+        ]);
+
+        if($validate->fails()) {
+            return failure('Provide proper input');
+        }
+
         $userLoan = $this->model::find($loanId);
 
         if ( $userLoan && $userLoan->loan_status_id != APPLIED_LOAN_STATUS_ID ) {
             return failure('No such loan found and only applied loan can be rejected');
         }
 
-        if ( ( is_null($userLoan->sanctioned_at) ) ) {
-            $this->service->approveLoan($userLoan);
+        if ( ( is_null($userLoan->sanctioned_at) )) {
+            $loanStatus = REJECT_LOAN_STATUS_ID;
+            if (!empty($request->is_approved)) {
+                $loanStatus = OPEN_LOAN_STATUS_ID;
+            }
 
-            return success($userLoan->user->email . ' loan is approved!');
+            $this->service->changeLoanStatus($userLoan, $loanStatus);
+            return success($userLoan->user->email . ' loan status is changed!');
         }
 
         return failure('Loan already approved/rejected');
     }
 
-    /**
-     * Admin reject loans
-     * Only Applied loan status can be rejected
-     *
-     * @param $loanId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function rejectLoan ($loanId)
-    {
-        $userLoan = $this->model::find($loanId);
-
-        if ( !$userLoan ) {
-            return failure ('No such loan');
-        }
-
-        if ( $userLoan->loan_status_id === APPLIED_LOAN_STATUS_ID ) {
-            $this->service->changeLoanStatus($userLoan, REJECT_LOAN_STATUS_ID);
-
-            return success('Rejected loan for ' . $userLoan->user->email);
-        }
-
-        return failure('Only applied loan can be rejected');
-    }
 
     /**
      * Admin can create loan offline for user.
